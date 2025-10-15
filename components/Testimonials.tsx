@@ -7,7 +7,7 @@ const ServiceCard: React.FC<{ service: typeof SERVICES[0], index: number }> = ({
   return (
     <div 
         ref={ref} 
-        className={`glass-card rounded-xl p-8 text-left h-full flex flex-col transition-all duration-500 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`} 
+        className={`extra-glass-card rounded-xl p-8 text-left h-full flex flex-col transition-all duration-500 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`} 
         style={{ transitionDelay: `${index * 150}ms` }}>
       <div className="flex items-center mb-4">
         <i className={`${service.icon} text-3xl text-white`}></i>
@@ -30,13 +30,13 @@ const Services: React.FC = () => {
     const { ref, isVisible } = useScrollAnimation<HTMLDivElement>({ triggerOnce: true });
 
   return (
-    <section id="services" className="py-20 bg-red-600">
-      <div ref={ref} className="container mx-auto px-6">
+    <section id="services" className="py-20 text-white relative">
+      <div ref={ref} className="container mx-auto px-6 relative z-10">
         <div className={`transition-opacity duration-1000 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
-          <h2 className="text-4xl font-bold text-center mb-4 text-white">
+          <h2 className="text-4xl font-bold text-center mb-4">
             Our Services
           </h2>
-          <div className="w-24 h-1 bg-white mx-auto mb-12"></div>
+          <div className="w-24 h-1 bg-red-300 mx-auto mb-12"></div>
         </div>
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
           {SERVICES.map((service, index) => (

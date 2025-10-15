@@ -1,0 +1,17 @@
+@font-face {
+    font-family: 'Swiss 721';
+    src: url('./src/assets/fonts/swiss-721/Swiss721Bold.ttf') format('truetype');
+    font-weight: bold;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Swiss 721';
+    src: url('./src/assets/fonts/swiss-721/Swiss721Black.ttf') format('truetype');
+    font-weight: 900;
+    font-style: normal;
+}
+
+body {
+    font-family: 'Swiss 721', sans-serif;
+}

@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { NAV_LINKS } from '../constants';
+import { db } from '../firebase';
+import { doc, getDoc } from 'firebase/firestore';
 
 const Header: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isPortfolioVisible, setIsPortfolioVisible] = useState(false);
+  const [logo, setLogo] = useState('https://i.postimg.cc/0yvTRQ22/mention-logo-wihte.png');
 
   useEffect(() => {
     const handleScroll = () => {
@@ -12,6 +15,21 @@ const Header: React.FC = () => {
     };
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  useEffect(() => {
+    const loadLogo = async () => {
+      try {
+        const docRef = doc(db, 'siteSettings', 'main');
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists() && docSnap.data().logo) {
+          setLogo(docSnap.data().logo);
+        }
+      } catch (error) {
+        console.error('Error loading logo:', error);
+      }
+    };
+    loadLogo();
   }, []);
   
   // Observe the portfolio section to force white header when portfolio is visible
@@ -67,39 +85,42 @@ const Header: React.FC = () => {
   };
 
   return (
-    <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${hasWhiteBg ? 'bg-white/90 backdrop-blur-lg shadow-md' : 'bg-transparent'}`}>
-      <div className="container mx-auto px-6 py-4">
+    <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${hasWhiteBg ? 'bg-black/90 backdrop-blur-lg shadow-md' : 'bg-transparent'}`}>
+      <div className="container mx-auto px-4 md:px-6 py-2 md:py-4">
         <div className="flex items-center justify-between">
-          <a href="#home">
+          <a 
+            href="#home"
+            className="transition-all duration-300"
+          >
             <img 
-              src="https://i.postimg.cc/0yvTRQ22/mention-logo-wihte.png" 
+              src={logo} 
               alt="Mention Studio Logo"
-              className={`h-8 w-auto transition-all duration-300 ${hasWhiteBg ? 'invert' : ''}`}
+              className="h-6 md:h-8 w-auto"
             />
           </a>
-          <nav className="hidden md:flex items-center space-x-8">
+          <nav className="hidden md:flex items-center space-x-4">
             {NAV_LINKS.map(link => (
               <a 
                 key={link.href} 
                 href={link.href} 
                 onClick={(e) => handleLinkClick(e, link.href)}
-                className={`transition-colors font-medium ${hasWhiteBg ? 'text-gray-700 hover:text-red-600' : 'text-white hover:text-red-200'}`}
+                className="transition-all duration-300 font-medium text-white hover:text-red-300"
               >
                 {link.label}
               </a>
             ))}
           </nav>
           <div className="md:hidden">
-            <button onClick={() => setIsOpen(!isOpen)} className={`${hasWhiteBg ? 'text-gray-800' : 'text-white'} focus:outline-none`}>
+            <button onClick={() => setIsOpen(!isOpen)} className={`${hasWhiteBg ? 'text-white' : 'text-white'} focus:outline-none`}>
               <i className={`fas ${isOpen ? 'fa-times' : 'fa-bars'} text-2xl transition-transform duration-300 ease-in-out ${isOpen ? 'rotate-180' : ''}`}></i>
             </button>
           </div>
         </div>
         <nav className={`md:hidden overflow-hidden transition-all duration-500 ease-in-out ${isOpen ? 'max-h-96 mt-4' : 'max-h-0'}`}>
-            <ul className="flex flex-col items-center space-y-4 py-2">
+            <ul className="flex flex-col items-center space-y-4 py-2 bg-white/20 backdrop-blur-md rounded-lg">
               {NAV_LINKS.map(link => (
                 <li key={link.href}>
-                  <a href={link.href} onClick={(e) => handleLinkClick(e, link.href)} className="text-gray-700 hover:text-red-600 transition-colors font-medium text-lg">
+                  <a href={link.href} onClick={(e) => handleLinkClick(e, link.href)} className="text-white hover:text-red-200 transition-colors font-medium text-lg">
                     {link.label}
                   </a>
                 </li>

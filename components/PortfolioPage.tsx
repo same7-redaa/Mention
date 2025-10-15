@@ -1,53 +1,251 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { PORTFOLIO_ITEMS } from '../constants';
 import type { PortfolioItem } from '../types';
+import { db } from '../firebase';
+import { doc, getDoc } from 'firebase/firestore';
+import { X, Play } from 'lucide-react';
 
-const PortfolioCard: React.FC<{ item: PortfolioItem }> = ({ item }) => {
+const PortfolioCard: React.FC<{ item: PortfolioItem; onClick: () => void }> = ({ item, onClick }) => {
+  const renderThumbnail = () => {
+    if (item.type === 'video' && item.videoUrl) {
+      // For YouTube, use thumbnail
+      const youtubeMatch = item.videoUrl.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/);
+      if (youtubeMatch) {
+        return (
+          <>
+            <img 
+              src={`https://img.youtube.com/vi/${youtubeMatch[1]}/maxresdefault.jpg`}
+              alt={item.title} 
+              className="absolute inset-0 w-full h-full object-cover"
+              onError={(e) => {
+                // Fallback to standard quality if maxres fails
+                (e.target as HTMLImageElement).src = `https://img.youtube.com/vi/${youtubeMatch[1]}/hqdefault.jpg`;
+              }}
+            />
+            <div className="absolute inset-0 bg-black/30 group-hover:bg-black/50 flex items-center justify-center transition-colors duration-300">
+              <div className="bg-red-600 rounded-full p-4 md:p-6 transform group-hover:scale-125 transition-transform duration-300 shadow-2xl">
+                <Play size={32} fill="white" className="text-white md:w-12 md:h-12 translate-x-0.5" />
+              </div>
+            </div>
+          </>
+        );
+      }
+      // For direct video, show first frame with play button
+      return (
+        <>
+          <video
+            src={item.videoUrl}
+            className="absolute inset-0 w-full h-full object-cover"
+            muted
+            playsInline
+          />
+          <div className="absolute inset-0 bg-black/30 group-hover:bg-black/50 flex items-center justify-center transition-colors duration-300">
+            <div className="bg-red-600 rounded-full p-4 md:p-6 transform group-hover:scale-125 transition-transform duration-300 shadow-2xl">
+              <Play size={32} fill="white" className="text-white md:w-12 md:h-12 translate-x-0.5" />
+            </div>
+          </div>
+        </>
+      );
+    }
+    return <img src={item.imageUrl} alt={item.title} className="absolute inset-0 w-full h-full object-cover" />;
+  };
+
   return (
-    <div className="group relative overflow-hidden rounded-lg aspect-square shadow-lg transform hover:-translate-y-1 transition-transform duration-300">
-      {item.type === 'video' ? (
+    <div 
+      onClick={onClick}
+      className="group relative overflow-hidden rounded-lg aspect-square shadow-lg transform hover:-translate-y-1 transition-transform duration-300 cursor-pointer"
+    >
+      {renderThumbnail()}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+    </div>
+  );
+};
+
+const Modal: React.FC<{ item: PortfolioItem | null; onClose: () => void }> = ({ item, onClose }) => {
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    
+    if (item) {
+      document.addEventListener('keydown', handleEscape);
+      document.body.style.overflow = 'hidden';
+    }
+    
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+      document.body.style.overflow = 'unset';
+    };
+  }, [item, onClose]);
+
+  if (!item) return null;
+
+  const renderModalContent = () => {
+    if (item.type === 'video' && item.videoUrl) {
+      // Support YouTube regular videos, Shorts, and youtu.be links
+      const youtubeMatch = item.videoUrl.match(/(?:youtube\.com\/(?:shorts\/|(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=))|youtu\.be\/)([^"&?\/\s]{11})/);
+      if (youtubeMatch) {
+        return (
+          <iframe
+            src={`https://www.youtube.com/embed/${youtubeMatch[1]}?autoplay=1`}
+            className="w-full h-full rounded-lg"
+            allow="autoplay; encrypted-media"
+            allowFullScreen
+          />
+        );
+      }
+      return (
         <video
           src={item.videoUrl}
-          className="absolute inset-0 w-full h-full object-cover"
+          className="w-full h-full rounded-lg object-contain"
+          controls
           autoPlay
-          loop
-          muted
-          playsInline
         />
-      ) : (
-        <img src={item.imageUrl} alt={item.title} className="absolute inset-0 w-full h-full object-cover" />
-      )}
-      {/* overlay removed - show image/video only */}
+      );
+    }
+    return <img src={item.imageUrl} alt={item.title} className="w-full h-full object-contain rounded-lg" />;
+  };
+
+  return (
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 p-4 backdrop-blur-sm animate-fadeIn"
+      onClick={onClose}
+    >
+      <style dangerouslySetInnerHTML={{__html: `
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes scaleIn {
+          from { transform: scale(0.9); opacity: 0; }
+          to { transform: scale(1); opacity: 1; }
+        }
+        .animate-fadeIn {
+          animation: fadeIn 0.3s ease-out;
+        }
+        .animate-scaleIn {
+          animation: scaleIn 0.3s ease-out;
+        }
+      `}} />
+      <button
+        onClick={onClose}
+        className="absolute top-4 right-4 md:top-6 md:right-6 bg-red-600 text-white p-2.5 rounded-full hover:bg-red-700 hover:scale-110 transition-all shadow-2xl z-10"
+        aria-label="إغلاق"
+      >
+        <X size={22} />
+      </button>
+      <div 
+        className={`${item.type === 'video' ? 'w-full max-w-4xl aspect-video' : 'max-w-3xl max-h-[70vh] flex items-center justify-center'} relative animate-scaleIn`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {renderModalContent()}
+      </div>
+      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-white text-xs bg-black/60 px-3 py-1.5 rounded-full">
+        اضغط ESC أو خارج النافذة للإغلاق
+      </div>
     </div>
   );
 };
 
 const PortfolioPage: React.FC = () => {
   const [filter, setFilter] = useState('All');
+  const [portfolioData, setPortfolioData] = useState<{ [category: string]: string[] }>({});
+  const [allItems, setAllItems] = useState<PortfolioItem[]>([]);
+  const [selectedItem, setSelectedItem] = useState<PortfolioItem | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const categories = useMemo(() => ['All', ...new Set(PORTFOLIO_ITEMS.map((item) => item.category))], []);
+  useEffect(() => {
+    const loadPortfolioData = async () => {
+      try {
+        setLoading(true);
+        const docRef = doc(db, 'siteSettings', 'main');
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists() && docSnap.data().portfolioCategories) {
+          const categories = docSnap.data().portfolioCategories;
+          setPortfolioData(categories);
+          
+          // Convert to PortfolioItem format
+          const items: PortfolioItem[] = [];
+          Object.entries(categories).forEach(([category, media]: [string, any]) => {
+            if (Array.isArray(media)) {
+              media.forEach((item: any) => {
+                // Support both old format (string) and new format (object with url and type)
+                if (typeof item === 'string') {
+                  items.push({
+                    id: items.length + 1,
+                    title: category,
+                    category: category,
+                    imageUrl: item,
+                    type: 'image'
+                  });
+                } else if (item.url) {
+                  items.push({
+                    id: items.length + 1,
+                    title: category,
+                    category: category,
+                    imageUrl: item.url,
+                    videoUrl: item.type === 'video' ? item.url : undefined,
+                    type: item.type || 'image'
+                  });
+                }
+              });
+            }
+          });
+          if (items.length > 0) {
+            setAllItems(items);
+          } else {
+            // إذا لم توجد بيانات في Firestore، استخدم البيانات التجريبية
+            setAllItems(PORTFOLIO_ITEMS);
+          }
+        } else {
+          // إذا لم يوجد المستند، استخدم البيانات التجريبية
+          setAllItems(PORTFOLIO_ITEMS);
+        }
+      } catch (error) {
+        console.error('Error loading portfolio:', error);
+        // في حالة الخطأ، استخدم البيانات التجريبية
+        setAllItems(PORTFOLIO_ITEMS);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadPortfolioData();
+  }, []);
+
+  const categories = useMemo(() => ['All', ...new Set(allItems.map((item) => item.category))], [allItems]);
 
   const filteredItems = useMemo(
-    () => (filter === 'All' ? PORTFOLIO_ITEMS : PORTFOLIO_ITEMS.filter((item) => item.category === filter)),
-    [filter]
+    () => (filter === 'All' ? allItems : allItems.filter((item) => item.category === filter)),
+    [filter, allItems]
   );
 
+  if (loading) {
+    return (
+      <section id="portfolio" className="py-20 pt-32 min-h-screen relative text-white bg-gradient-to-br from-red-700 to-black flex items-center justify-center" style={{ scrollMarginTop: '80px' }}>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-red-300 mx-auto mb-4"></div>
+          <p className="text-xl">جاري تحميل الأعمال...</p>
+        </div>
+      </section>
+    );
+  }
+
   return (
-    <section id="portfolio" className="py-20 pt-32 min-h-screen relative text-white bg-gradient-to-br from-red-600 via-red-800 to-black" style={{ scrollMarginTop: '80px' }}>
+    <section id="portfolio" className="py-20 pt-32 min-h-screen relative text-white bg-gradient-to-br from-red-700 to-black" style={{ scrollMarginTop: '80px' }}>
       {/* Red to black gradient background */}
       <div className="container mx-auto px-6">
         <h2 className="text-4xl font-bold text-center mb-4 text-white">
           Our <span className="text-red-300">Portfolio</span>
         </h2>
-        <div className="w-24 h-1 bg-red-400 mx-auto mb-12"></div>
+        <div className="w-24 h-1 bg-red-300 mx-auto mb-12"></div>
 
         <div className="flex justify-center flex-wrap gap-2 md:gap-4 mb-12">
           {categories.map((category) => (
             <button
               key={category}
               onClick={() => setFilter(category)}
-              className={`px-5 py-2 text-sm md:text-base font-semibold rounded-full transition-all duration-300 ${
-                filter === category ? 'bg-red-500 text-white shadow-lg' : 'bg-white/20 backdrop-blur-sm text-white hover:bg-white/30'
+              className={`px-5 py-2 text-sm md:text-base font-semibold rounded-full transition-all duration-300 glass-card ${
+                filter === category ? 'bg-red-500 text-white shadow-lg' : 'hover:bg-white/10'
               }`}
             >
               {category}
@@ -55,12 +253,26 @@ const PortfolioPage: React.FC = () => {
           ))}
         </div>
 
-        <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-          {filteredItems.map((item) => (
-            <PortfolioCard key={item.id} item={item} />
-          ))}
-        </div>
+        {filteredItems.length === 0 ? (
+          <div className="text-center py-20">
+            <p className="text-2xl text-red-200 mb-4">لا توجد أعمال في هذه الفئة</p>
+            <p className="text-gray-400">يمكنك إضافة أعمال جديدة من لوحة التحكم</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+            {filteredItems.map((item) => (
+              <PortfolioCard 
+                key={item.id} 
+                item={item} 
+                onClick={() => setSelectedItem(item)}
+              />
+            ))}
+          </div>
+        )}
       </div>
+
+      {/* Modal */}
+      <Modal item={selectedItem} onClose={() => setSelectedItem(null)} />
     </section>
   );
 };

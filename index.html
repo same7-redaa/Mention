@@ -11,15 +11,22 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <style>
       body {
-        font-family: 'Dosis', sans-serif;
+        font-family: 'Swiss 721', 'Dosis', sans-serif;
         background-color: #ffffff;
         color: #333333; /* Dark gray for text */
       }
       .glass-card {
-        background: rgba(255, 255, 255, 0.1);
+        background: rgba(255, 255, 255, 0.05);
         backdrop-filter: blur(10px);
         -webkit-backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+      .extra-glass-card {
+        background: rgba(255, 255, 255, 0.15);
+        backdrop-filter: blur(25px);
+        -webkit-backdrop-filter: blur(25px);
         border: 1px solid rgba(255, 255, 255, 0.2);
+        box-shadow: 0 0 15px rgba(255, 100, 100, 0.3);
       }
       .animated-gradient {
         background: linear-gradient(300deg, #b91c1c, #991b1b, #000000, #b91c1c);

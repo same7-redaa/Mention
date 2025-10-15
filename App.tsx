@@ -8,6 +8,7 @@ import Vision from './components/Countdown';
 import Contact from './components/ContactForm';
 import Footer from './components/Footer';
 import PortfolioPage from './components/PortfolioPage';
+import Dashboard from './components/Dashboard';
 
 const App: React.FC = () => {
   const [page, setPage] = useState(window.location.hash);
@@ -26,23 +27,31 @@ const App: React.FC = () => {
 
   return (
     <div className="overflow-x-hidden">
-      <Header />
-      <main>
-        {page === '#portfolio' ? (
-          <PortfolioPage />
-        ) : (
-          <>
-            <Hero />
-            <About />
-            <Services />
-            <Portfolio />
-            <Clients />
-            <Vision />
-            <Contact />
-          </>
-        )}
-      </main>
-      <Footer />
+      {page === '#admin' ? (
+        <Dashboard />
+      ) : (
+        <>
+          <Header />
+          <main>
+            {page === '#portfolio' ? (
+              <PortfolioPage />
+            ) : (
+              <>
+                <Hero />
+                <div className="bg-gradient-to-br from-black via-red-950 to-black">
+                  <About />
+                  <Services />
+                  <Portfolio />
+                  <Clients />
+                  <Vision />
+                  <Contact />
+                </div>
+              </>
+            )}
+          </main>
+          <Footer />
+        </>
+      )}
     </div>
   );
 };
