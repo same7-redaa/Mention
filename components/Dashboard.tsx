@@ -97,10 +97,19 @@ const Dashboard: React.FC = () => {
 
   const saveSiteData = async () => {
     try {
-      console.log('Saving data to Firestore:', siteData);
-      await setDoc(doc(db, 'siteSettings', 'main'), siteData);
+      // Convert all Google Drive links before saving
+      const processedData = {
+        ...siteData,
+        logo: convertGoogleDriveLink(siteData.logo),
+        aboutImage: convertGoogleDriveLink(siteData.aboutImage),
+        clientLogos: siteData.clientLogos.map(url => convertGoogleDriveLink(url)),
+        // Portfolio categories are already converted in addImageToCategory
+      };
+      
+      console.log('Saving data to Firestore:', processedData);
+      await setDoc(doc(db, 'siteSettings', 'main'), processedData);
       console.log('Data saved successfully!');
-      alert('✅ تم حفظ البيانات بنجاح! يمكنك الآن العودة للصفحة الرئيسية لرؤية التغييرات.');
+      alert('✅ تم حفظ البيانات بنجاح! تم تحويل روابط Google Drive تلقائياً.');
     } catch (error: any) {
       console.error('Error saving data:', error);
       alert('❌ حدث خطأ أثناء الحفظ: ' + (error.message || 'Unknown error'));
@@ -198,16 +207,49 @@ const Dashboard: React.FC = () => {
     setEditCategoryName('');
   };
 
+  // Convert Google Drive links to direct view links
+  const convertGoogleDriveLink = (url: string): string => {
+    if (!url) return url;
+    
+    // Extract FILE_ID from various Google Drive URL formats
+    // Pattern: https://drive.google.com/file/d/FILE_ID/...
+    const fileIdMatch = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+    
+    if (fileIdMatch && fileIdMatch[1]) {
+      const fileId = fileIdMatch[1];
+      // Use thumbnail format for better image display
+      return `https://drive.google.com/thumbnail?id=${fileId}&sz=w2000`;
+    }
+    
+    // Pattern: https://drive.google.com/open?id=FILE_ID
+    const openIdMatch = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    if (openIdMatch && openIdMatch[1]) {
+      return `https://drive.google.com/thumbnail?id=${openIdMatch[1]}&sz=w2000`;
+    }
+    
+    // Already in direct format (uc or thumbnail)
+    if (url.includes('drive.google.com/uc?') || url.includes('drive.google.com/thumbnail?')) {
+      return url;
+    }
+    
+    // Return original URL if not a Google Drive link
+    return url;
+  };
+
   const addImageToCategory = () => {
     if (selectedCategory && newCategoryImage.trim()) {
+      // Convert Google Drive links automatically
+      const convertedUrl = convertGoogleDriveLink(newCategoryImage.trim());
+      const convertedCover = videoCoverImage.trim() ? convertGoogleDriveLink(videoCoverImage.trim()) : '';
+      
       const newItem: MediaItem = {
-        url: newCategoryImage.trim(),
+        url: convertedUrl,
         type: mediaType
       };
       
       // إضافة صورة الغلاف للفيديوهات إذا تم إدخالها
-      if (mediaType === 'video' && videoCoverImage.trim()) {
-        newItem.coverImage = videoCoverImage.trim();
+      if (mediaType === 'video' && convertedCover) {
+        newItem.coverImage = convertedCover;
       }
       
       setSiteData({
@@ -412,12 +454,27 @@ const Dashboard: React.FC = () => {
                   <HelpCircle size={16} />
                   الشعار الذي يظهر في أعلى الموقع (Header)
                 </p>
+                <div className="bg-green-600/20 border border-green-500 p-3 rounded-lg mb-4">
+                  <p className="text-green-200 text-xs flex items-center gap-2">
+                    <Check size={14} />
+                    يمكنك استخدام روابط Google Drive مباشرة! سيتم تحويلها تلقائياً عند الحفظ
+                  </p>
+                </div>
+                <div className="bg-yellow-600/20 border border-yellow-500 p-3 rounded-lg mb-4">
+                  <p className="text-yellow-200 text-xs font-semibold mb-1">⚠️ مهم لاستخدام Google Drive:</p>
+                  <ol className="text-yellow-200 text-xs list-decimal list-inside space-y-1">
+                    <li>انقر بزر الماوس الأيمن على الملف في Drive</li>
+                    <li>اختر "Share" أو "مشاركة"</li>
+                    <li>اختر "Anyone with the link" أو "أي شخص لديه الرابط"</li>
+                    <li>انسخ الرابط والصقه هنا</li>
+                  </ol>
+                </div>
                 <input
                   type="text"
                   value={siteData.logo}
                   onChange={(e) => setSiteData({ ...siteData, logo: e.target.value })}
                   className="w-full px-4 py-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:border-red-500 mb-4"
-                  placeholder="رابط الشعار"
+                  placeholder="رابط الشعار (يدعم Google Drive)"
                 />
                 {siteData.logo && (
                   <div className="flex justify-center">
