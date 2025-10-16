@@ -8,18 +8,26 @@ import { X, Play } from 'lucide-react';
 const PortfolioCard: React.FC<{ item: PortfolioItem; onClick: () => void }> = ({ item, onClick }) => {
   const renderThumbnail = () => {
     if (item.type === 'video' && item.videoUrl) {
-      // For YouTube, use thumbnail
+      // Check if custom cover image exists (from imageUrl)
+      // If imageUrl is different from videoUrl, it means a custom cover was set
+      const hasCustomCover = item.imageUrl && item.imageUrl !== item.videoUrl;
       const youtubeMatch = item.videoUrl.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/);
+      
+      // If it's YouTube video
       if (youtubeMatch) {
         return (
           <>
             <img 
-              src={`https://img.youtube.com/vi/${youtubeMatch[1]}/maxresdefault.jpg`}
+              src={hasCustomCover ? item.imageUrl : `https://img.youtube.com/vi/${youtubeMatch[1]}/maxresdefault.jpg`}
               alt={item.title} 
-              className="absolute inset-0 w-full h-full object-cover"
+              className="w-full h-auto object-cover rounded-lg"
               onError={(e) => {
-                // Fallback to standard quality if maxres fails
-                (e.target as HTMLImageElement).src = `https://img.youtube.com/vi/${youtubeMatch[1]}/hqdefault.jpg`;
+                // Fallback to YouTube thumbnail if custom image fails
+                if (hasCustomCover) {
+                  (e.target as HTMLImageElement).src = `https://img.youtube.com/vi/${youtubeMatch[1]}/maxresdefault.jpg`;
+                } else {
+                  (e.target as HTMLImageElement).src = `https://img.youtube.com/vi/${youtubeMatch[1]}/hqdefault.jpg`;
+                }
               }}
             />
             <div className="absolute inset-0 bg-black/30 group-hover:bg-black/50 flex items-center justify-center transition-colors duration-300">
@@ -30,12 +38,30 @@ const PortfolioCard: React.FC<{ item: PortfolioItem; onClick: () => void }> = ({
           </>
         );
       }
-      // For direct video, show first frame with play button
+      
+      // For direct video, use custom cover or video first frame
+      if (hasCustomCover) {
+        return (
+          <>
+            <img 
+              src={item.imageUrl}
+              alt={item.title} 
+              className="w-full h-auto object-cover rounded-lg"
+            />
+            <div className="absolute inset-0 bg-black/30 group-hover:bg-black/50 flex items-center justify-center transition-colors duration-300">
+              <div className="bg-red-600 rounded-full p-4 md:p-6 transform group-hover:scale-125 transition-transform duration-300 shadow-2xl">
+                <Play size={32} fill="white" className="text-white md:w-12 md:h-12 translate-x-0.5" />
+              </div>
+            </div>
+          </>
+        );
+      }
+      
       return (
         <>
           <video
             src={item.videoUrl}
-            className="absolute inset-0 w-full h-full object-cover"
+            className="w-full h-auto object-cover rounded-lg"
             muted
             playsInline
           />
@@ -47,13 +73,13 @@ const PortfolioCard: React.FC<{ item: PortfolioItem; onClick: () => void }> = ({
         </>
       );
     }
-    return <img src={item.imageUrl} alt={item.title} className="absolute inset-0 w-full h-full object-cover" />;
+    return <img src={item.imageUrl} alt={item.title} className="w-full h-auto object-cover rounded-lg" />;
   };
 
   return (
     <div 
       onClick={onClick}
-      className="group relative overflow-hidden rounded-lg aspect-square shadow-lg transform hover:-translate-y-1 transition-transform duration-300 cursor-pointer"
+      className="group relative overflow-hidden rounded-lg shadow-lg transform hover:-translate-y-1 transition-transform duration-300 cursor-pointer"
     >
       {renderThumbnail()}
       <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -80,30 +106,46 @@ const Modal: React.FC<{ item: PortfolioItem | null; onClose: () => void }> = ({ 
 
   if (!item) return null;
 
+  // Check if video is YouTube Shorts
+  const isShorts = item.type === 'video' && item.videoUrl?.includes('/shorts/');
+
   const renderModalContent = () => {
     if (item.type === 'video' && item.videoUrl) {
       // Support YouTube regular videos, Shorts, and youtu.be links
       const youtubeMatch = item.videoUrl.match(/(?:youtube\.com\/(?:shorts\/|(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=))|youtu\.be\/)([^"&?\/\s]{11})/);
+      const isShorts = item.videoUrl.includes('/shorts/');
+      
       if (youtubeMatch) {
         return (
-          <iframe
-            src={`https://www.youtube.com/embed/${youtubeMatch[1]}?autoplay=1`}
-            className="w-full h-full rounded-lg"
-            allow="autoplay; encrypted-media"
-            allowFullScreen
-          />
+          <div className={`${isShorts ? 'w-auto h-full' : 'w-full h-full'}`}>
+            <iframe
+              src={`https://www.youtube.com/embed/${youtubeMatch[1]}?autoplay=1`}
+              className={`rounded-lg ${isShorts ? 'h-full w-auto' : 'w-full h-full'}`}
+              style={isShorts ? { aspectRatio: '9/16', maxHeight: '85vh' } : {}}
+              allow="autoplay; encrypted-media"
+              allowFullScreen
+            />
+          </div>
         );
       }
       return (
         <video
           src={item.videoUrl}
-          className="w-full h-full rounded-lg object-contain"
+          className="max-w-full max-h-full rounded-lg"
           controls
           autoPlay
+          style={{ width: 'auto', height: 'auto' }}
         />
       );
     }
-    return <img src={item.imageUrl} alt={item.title} className="w-full h-full object-contain rounded-lg" />;
+    return (
+      <img 
+        src={item.imageUrl} 
+        alt={item.title} 
+        className="max-w-full max-h-full rounded-lg" 
+        style={{ width: 'auto', height: 'auto', objectFit: 'contain' }}
+      />
+    );
   };
 
   return (
@@ -135,7 +177,13 @@ const Modal: React.FC<{ item: PortfolioItem | null; onClose: () => void }> = ({ 
         <X size={22} />
       </button>
       <div 
-        className={`${item.type === 'video' ? 'w-full max-w-4xl aspect-video' : 'max-w-3xl max-h-[70vh] flex items-center justify-center'} relative animate-scaleIn`}
+        className="relative animate-scaleIn flex items-center justify-center"
+        style={{
+          maxWidth: isShorts ? '450px' : '90vw',
+          maxHeight: '85vh',
+          width: isShorts ? 'auto' : (item.type === 'video' ? '80vw' : 'auto'),
+          height: isShorts ? '85vh' : (item.type === 'video' ? '80vh' : 'auto')
+        }}
         onClick={(e) => e.stopPropagation()}
       >
         {renderModalContent()}
@@ -183,7 +231,7 @@ const PortfolioPage: React.FC = () => {
                     id: items.length + 1,
                     title: category,
                     category: category,
-                    imageUrl: item.url,
+                    imageUrl: item.coverImage || item.url, // استخدام صورة الغلاف إذا كانت موجودة
                     videoUrl: item.type === 'video' ? item.url : undefined,
                     type: item.type || 'image'
                   });
@@ -259,13 +307,14 @@ const PortfolioPage: React.FC = () => {
             <p className="text-gray-400">يمكنك إضافة أعمال جديدة من لوحة التحكم</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+          <div className="columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-4 space-y-4">
             {filteredItems.map((item) => (
-              <PortfolioCard 
-                key={item.id} 
-                item={item} 
-                onClick={() => setSelectedItem(item)}
-              />
+              <div key={item.id} className="break-inside-avoid mb-4">
+                <PortfolioCard 
+                  item={item} 
+                  onClick={() => setSelectedItem(item)}
+                />
+              </div>
             ))}
           </div>
         )}

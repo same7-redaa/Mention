@@ -27,6 +27,7 @@ import {
 interface MediaItem {
   url: string;
   type: 'image' | 'video';
+  coverImage?: string; // صورة الغلاف للفيديوهات
 }
 
 interface SiteData {
@@ -55,6 +56,7 @@ const Dashboard: React.FC = () => {
   const [newCategory, setNewCategory] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [newCategoryImage, setNewCategoryImage] = useState('');
+  const [videoCoverImage, setVideoCoverImage] = useState('');
   const [editingCategory, setEditingCategory] = useState<string | null>(null);
   const [editCategoryName, setEditCategoryName] = useState('');
   const [activeTab, setActiveTab] = useState<'general' | 'clients' | 'portfolio' | 'featured'>('general');
@@ -198,17 +200,28 @@ const Dashboard: React.FC = () => {
 
   const addImageToCategory = () => {
     if (selectedCategory && newCategoryImage.trim()) {
+      const newItem: MediaItem = {
+        url: newCategoryImage.trim(),
+        type: mediaType
+      };
+      
+      // إضافة صورة الغلاف للفيديوهات إذا تم إدخالها
+      if (mediaType === 'video' && videoCoverImage.trim()) {
+        newItem.coverImage = videoCoverImage.trim();
+      }
+      
       setSiteData({
         ...siteData,
         portfolioCategories: {
           ...siteData.portfolioCategories,
           [selectedCategory]: [
             ...siteData.portfolioCategories[selectedCategory],
-            { url: newCategoryImage.trim(), type: mediaType }
+            newItem
           ]
         }
       });
       setNewCategoryImage('');
+      setVideoCoverImage('');
     }
   };
 
@@ -223,16 +236,28 @@ const Dashboard: React.FC = () => {
   };
 
   const toggleFeaturedWork = (item: MediaItem) => {
-    if (siteData.featuredWork.includes(item.url)) {
+    // For videos with custom cover, store the cover image URL
+    // For videos without custom cover or images, store the main URL
+    const itemIdentifier = (item.type === 'video' && item.coverImage) ? item.coverImage : item.url;
+    
+    console.log('Toggle Featured Work:', {
+      item,
+      itemIdentifier,
+      currentFeaturedWork: siteData.featuredWork,
+      isAlreadyFeatured: siteData.featuredWork.includes(itemIdentifier),
+      featuredCount: siteData.featuredWork.length
+    });
+    
+    if (siteData.featuredWork.includes(itemIdentifier)) {
       setSiteData({
         ...siteData,
-        featuredWork: siteData.featuredWork.filter(url => url !== item.url)
+        featuredWork: siteData.featuredWork.filter(id => id !== itemIdentifier)
       });
     } else {
       if (siteData.featuredWork.length < 4) {
         setSiteData({
           ...siteData,
-          featuredWork: [...siteData.featuredWork, item.url]
+          featuredWork: [...siteData.featuredWork, itemIdentifier]
         });
       } else {
         alert('يمكنك اختيار 4 صور فقط للعرض في القسم الخارجي');
@@ -548,6 +573,23 @@ const Dashboard: React.FC = () => {
                         </label>
                       </div>
 
+                      {/* Video Cover Image Input */}
+                      {mediaType === 'video' && (
+                        <div>
+                          <label className="block text-white mb-2 text-sm flex items-center gap-2">
+                            <ImageIcon size={16} />
+                            صورة الغلاف للفيديو (اختياري)
+                          </label>
+                          <input
+                            type="text"
+                            value={videoCoverImage}
+                            onChange={(e) => setVideoCoverImage(e.target.value)}
+                            className="w-full px-4 py-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:border-red-500"
+                            placeholder="رابط صورة الغلاف (اختياري - سيتم استخدام صورة YouTube التلقائية إذا تركته فارغاً)"
+                          />
+                        </div>
+                      )}
+
                       {/* Add Media */}
                       <div className="flex gap-2">
                         <input
@@ -555,7 +597,7 @@ const Dashboard: React.FC = () => {
                           value={newCategoryImage}
                           onChange={(e) => setNewCategoryImage(e.target.value)}
                           className="flex-1 px-4 py-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:border-red-500"
-                          placeholder={mediaType === 'image' ? "رابط الصورة" : "رابط الفيديو أو YouTube"}
+                          placeholder={mediaType === 'image' ? "رابط الصورة" : "رابط الفيديو (YouTube أو مباشر)"}
                         />
                         <button
                           onClick={addImageToCategory}
@@ -620,7 +662,9 @@ const Dashboard: React.FC = () => {
                           </div>
                         </div>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                          {items.map((item, index) => (
+                          {items.map((item, index) => {
+                            const itemIdentifier = (item.type === 'video' && item.coverImage) ? item.coverImage : item.url;
+                            return (
                             <div key={index} className="relative bg-gray-600 rounded-xl overflow-hidden aspect-square">
                               {renderMediaPreview(item, 'rounded-xl')}
                               <div className="absolute top-2 left-2 bg-black/60 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
@@ -636,13 +680,14 @@ const Dashboard: React.FC = () => {
                               <button
                                 onClick={() => toggleFeaturedWork(item)}
                                 className={`absolute bottom-2 left-2 text-white w-8 h-8 rounded-full flex items-center justify-center shadow-lg ${
-                                  siteData.featuredWork.includes(item.url) ? 'bg-yellow-500' : 'bg-gray-500'
+                                  siteData.featuredWork.includes(itemIdentifier) ? 'bg-yellow-500' : 'bg-gray-500'
                                 }`}
                               >
-                                <Star size={16} fill={siteData.featuredWork.includes(item.url) ? 'white' : 'none'} />
+                                <Star size={16} fill={siteData.featuredWork.includes(itemIdentifier) ? 'white' : 'none'} />
                               </button>
                             </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       </div>
                     ))}
@@ -655,10 +700,21 @@ const Dashboard: React.FC = () => {
           {/* Featured Work Tab */}
           {activeTab === 'featured' && (
             <div className="bg-gray-800 p-6 rounded-lg shadow-xl">
-              <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
-                <Star size={24} />
-                صور القسم الخارجي ({siteData.featuredWork.length}/4)
-              </h2>
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                  <Star size={24} />
+                  صور القسم الخارجي ({siteData.featuredWork.length}/4)
+                </h2>
+                {siteData.featuredWork.length > 0 && (
+                  <button
+                    onClick={() => setSiteData({ ...siteData, featuredWork: [] })}
+                    className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition-colors flex items-center gap-2"
+                  >
+                    <X size={18} />
+                    مسح الكل
+                  </button>
+                )}
+              </div>
               <p className="text-gray-400 text-sm mb-4 flex items-center gap-2">
                 <HelpCircle size={16} />
                 الصور التي تظهر في قسم "A Glimpse of Our Work" في الصفحة الرئيسية - يمكنك اختيار 4 صور فقط
@@ -669,6 +725,21 @@ const Dashboard: React.FC = () => {
                   لاختيار الصور: اذهب لتبويب "معرض الأعمال" وانقر على النجمة ⭐ أسفل أي صورة
                 </p>
               </div>
+              
+              {/* Debug Info */}
+              {siteData.featuredWork.length > 0 && (
+                <div className="bg-gray-700/50 border border-gray-600 p-3 rounded-lg mb-4 text-xs">
+                  <p className="text-gray-400 mb-2">📋 معلومات تشخيصية (يمكنك حذف هذا القسم لاحقاً):</p>
+                  <div className="space-y-1 text-gray-300 font-mono">
+                    {siteData.featuredWork.map((item, i) => (
+                      <div key={i} className="truncate">
+                        {i + 1}. {item.substring(0, 60)}...
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {siteData.featuredWork.map((imageUrl, index) => (
                   <div key={index} className="relative bg-gray-700 rounded-xl overflow-hidden aspect-square">

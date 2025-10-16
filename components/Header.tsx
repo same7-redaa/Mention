@@ -95,7 +95,7 @@ const Header: React.FC = () => {
             <img 
               src={logo} 
               alt="Mention Studio Logo"
-              className="h-6 md:h-8 w-auto"
+              className="h-8 md:h-12 w-auto"
             />
           </a>
           <nav className="hidden md:flex items-center space-x-4">
